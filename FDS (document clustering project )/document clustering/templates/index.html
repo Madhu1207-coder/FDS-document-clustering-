@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Clustering with Interactive Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #dee690;
+        }
+        .header {
+            background-color: black;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+        }
+        .table-container {
+            flex: 1;
+            margin-right: 20px;
+        }
+        .results-container {
+            flex: 1;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #ef890d;
+            color: white;
+        }
+        .btn {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #8db306;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+        .btn:hover {
+            background-color: #55dfe6;
+        }
+        #clusterChart, #heatmap, #interactiveClusterChart {
+            margin-top: 20px;
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Document Clustering</h1>
+</div>
+
+<div class="container">
+    <div class="table-container">
+        <h2>Documents</h2>
+        <table id="documentTable">
+            <thead>
+                <tr>
+                    <th>Document ID</th>
+                    <th>Content</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Document dataset rows will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="results-container">
+        <button class="btn" onclick="performClustering()">Cluster Documents</button>
+        <button class="btn" onclick="downloadCSV()">Save and Share CSV</button>
+        <div id="clusterResults"></div>
+        <canvas id="clusterChart"></canvas>
+        <div id="interactiveClusterChart"></div>
+        <div id="heatmap"></div>
+    </div>
+</div>
+
+<script>
+    const documentData = [
+        { id: 1, content: "Machine learning is fascinating." },
+        { id: 2, content: "Artificial intelligence is transforming industries." },
+        { id: 3, content: "I enjoy reading about AI and ML." },
+        { id: 4, content: "Cloud computing offers scalable solutions." },
+        { id: 5, content: "AI, ML, and cloud computing are interconnected." },
+        { id: 6, content: "Quantum computing could change the world." },
+        { id: 7, content: "Big data is essential for AI." },
+        { id: 8, content: "Natural language processing is an AI application." },
+        { id: 9, content: "Cloud computing enables big data processing." },
+        { id: 10, content: "AI and quantum computing might work together in the future." },
+        { id: 11, content: "Deep learning has revolutionized computer vision." },
+        { id: 12, content: "Neural networks mimic the human brain." },
+        { id: 13, content: "AI ethics is crucial for responsible AI development." },
+        { id: 14, content: "Data science is integral to modern business." },
+        { id: 15, content: "AI can improve healthcare outcomes." },
+        { id: 16, content: "Cloud platforms provide tools for AI development." },
+        { id: 17, content: "AI chatbots enhance customer service." },
+        { id: 18, content: "The future of AI holds great promise." },
+        { id: 19, content: "Data privacy is a significant concern in AI." },
+        { id: 20, content: "AI can automate routine tasks." },
+        { id: 21, content: "The Internet of Things (IoT) is expanding rapidly." },
+        { id: 22, content: "Smart homes utilize AI for convenience." },
+        { id: 23, content: "AI algorithms are used for stock market predictions." },
+        { id: 24, content: "Computer vision is a vital area of AI research." },
+        { id: 25, content: "AI can enhance the gaming experience." },
+        { id: 26, content: "Robotics and AI are closely related fields." },
+        { id: 27, content: "AI in agriculture can optimize crop yields." },
+        { id: 28, content: "Natural language processing helps in sentiment analysis." },
+        { id: 29, content: "AI can assist in language translation." },
+        { id: 30, content: "The role of AI in education is growing." },
+        { id: 31, content: "AI is reshaping the future of work." },
+        { id: 32, content: "Robotics can be integrated with AI for better performance." },
+        { id: 33, content: "AI plays a crucial role in fraud detection." },
+        { id: 34, content: "The healthcare industry is leveraging AI for diagnostics." },
+        { id: 35, content: "AI can help in disaster response and management." },
+        { id: 36, content: "Self-driving cars utilize AI technology." },
+        { id: 37, content: "AI is changing the landscape of marketing." },
+        { id: 38, content: "Smart cities are being built using AI technologies." },
+        { id: 39, content: "AI-driven analytics provide deeper insights into data." },
+        { id: 40, content: "AI is pivotal in modern cybersecurity strategies." },
+        { id: 41, content: "Augmented reality and AI are enhancing user experiences." },
+        { id: 42, content: "AI technologies are streamlining supply chain management." },
+        { id: 43, content: "AI can improve decision-making in finance." },
+        { id: 44, content: "Natural language understanding is vital for AI." },
+        { id: 45, content: "AI helps in developing personalized learning paths." },
+        { id: 46, content: "AI can predict customer behavior effectively." },
+        { id: 47, content: "Virtual assistants rely on AI for functionality." },
+        { id: 48, content: "AI has applications in climate change modeling." },
+        { id: 49, content: "AI technologies can enhance retail experiences." },
+        { id: 50, content: "AI in gaming creates more immersive experiences." }
+    ];
+
+    // Populate the document table on page load
+    function populateTable() {
+        const tableBody = document.querySelector('#documentTable tbody');
+        documentData.forEach(doc => {
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${doc.id}</td>
+                <td>${doc.content}</td>
+            `;
+            tableBody.appendChild(newRow);
+        });
+    }
+
+    // Perform clustering and display results
+    function performClustering() {
+        const clusters = clusterDocuments(documentData);
+        displayClusterResults(clusters);
+        createClusterChart(clusters);
+        createInteractiveClusterVisualization(clusters);
+        createHeatmap(clusters);
+    }
+
+    // Mock clustering function using simple keyword similarity
+    function clusterDocuments(data) {
+        const clusters = { 'AI/ML': [], 'Cloud/Big Data': [], 'Quantum': [], 'Robotics': [], 'Data Science': [] };
+
+        data.forEach(doc => {
+            if (doc.content.includes('AI') || doc.content.includes('ML') || doc.content.includes('Artificial intelligence')) {
+                clusters['AI/ML'].push(doc);
+            } else if (doc.content.includes('Cloud') || doc.content.includes('Big data')) {
+                clusters['Cloud/Big Data'].push(doc);
+            } else if (doc.content.includes('Quantum')) {
+                clusters['Quantum'].push(doc);
+            } else if (doc.content.includes('Robotics')) {
+                clusters['Robotics'].push(doc);
+            } else if (doc.content.includes('Data science')) {
+                clusters['Data Science'].push(doc);
+            }
+        });
+
+        return clusters;
+    }
+
+    // Display cluster results in the DOM
+    function displayClusterResults(clusters) {
+        const resultsContainer = document.getElementById('clusterResults');
+        resultsContainer.innerHTML = '<h3>Cluster Results:</h3>';
+        for (const cluster in clusters) {
+            resultsContainer.innerHTML += `<strong>${cluster} (${clusters[cluster].length} documents)</strong><br>`;
+            clusters[cluster].forEach(doc => {
+                resultsContainer.innerHTML += `- ${doc.content}<br>`;
+            });
+            resultsContainer.innerHTML += '<br>';
+        }
+    }
+
+    // Create and display cluster chart using Chart.js
+    function createClusterChart(clusters) {
+        const clusterCounts = Object.values(clusters).map(cluster => cluster.length);
+        const ctx = document.getElementById('clusterChart').getContext('2d');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(clusters),
+                datasets: [{
+                    label: 'Number of Documents per Cluster',
+                    data: clusterCounts,
+                    backgroundColor: ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8']
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Create interactive cluster visualization with Plotly
+    function createInteractiveClusterVisualization(clusters) {
+        const xData = [];
+        const yData = [];
+        const clusterLabels = [];
+
+        for (const cluster in clusters) {
+            clusters[cluster].forEach(doc => {
+                xData.push(Math.random()); // Simulated x coordinate
+                yData.push(Math.random()); // Simulated y coordinate
+                clusterLabels.push(cluster);
+            });
+        }
+
+        const trace = {
+            x: xData,
+            y: yData,
+            mode: 'markers',
+            type: 'scatter',
+            text: clusterLabels,
+            marker: { size: 12 }
+        };
+
+        const layout = {
+            title: 'Interactive Cluster Visualization',
+            xaxis: { title: 'X Axis' },
+            yaxis: { title: 'Y Axis' },
+            hovermode: 'closest'
+        };
+
+        Plotly.newPlot('interactiveClusterChart', [trace], layout);
+    }
+
+    // Create heatmap for cluster visualization
+    function createHeatmap(clusters) {
+        const data = [];
+        const clusterKeys = Object.keys(clusters);
+
+        for (let i = 0; i < clusterKeys.length; i++) {
+            const clusterKey = clusterKeys[i];
+            const count = clusters[clusterKey].length;
+            data.push(count);
+        }
+
+        const heatmapData = [{
+            z: [data],
+            type: 'heatmap',
+            colorscale: 'Viridis'
+        }];
+
+        const layout = {
+            title: 'Cluster Heatmap',
+            xaxis: {
+                title: 'Clusters',
+                tickvals: Array.from({length: clusterKeys.length}, (_, i) => i),
+                ticktext: clusterKeys
+            },
+            yaxis: {
+                title: 'Document Count'
+            }
+        };
+
+        Plotly.newPlot('heatmap', heatmapData, layout);
+    }
+
+    // Function to download clustered data as CSV
+    function downloadCSV() {
+        const clusters = clusterDocuments(documentData);
+        const csvRows = [];
+        const headers = ['Cluster', 'Document ID', 'Content'];
+        csvRows.push(headers.join(','));
+
+        for (const cluster in clusters) {
+            clusters[cluster].forEach(doc => {
+                csvRows.push(`${cluster}, ${doc.id}, "${doc.content.replace(/"/g, '""')}"`);
+            });
+        }
+
+        const csvString = csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'clustered_documents.csv');
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Initialize the table on page load
+    window.onload = populateTable;
+</script>
+</body>
+</html>
